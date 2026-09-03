@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Two Truths & a Lie 🎯</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F9F7F4;color:#1a1a1a;min-height:100dvh}
+
+/* ── NAV ── */
+nav{background:#3730A3;color:white;padding:0;display:flex;align-items:stretch;position:sticky;top:0;z-index:100}
+.nav-brand{padding:14px 18px;font-size:16px;font-weight:800;flex:1}
+.nav-tabs{display:flex}
+.nav-tab{padding:14px 16px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:none;color:rgba(255,255,255,0.6);border-bottom:3px solid transparent;transition:all .15s}
+.nav-tab.active{color:white;border-bottom-color:#A5B4FC}
+.nav-tab:hover{color:white}
+
+/* ── LAYOUT ── */
+.page{display:none;padding:20px 16px 60px;max-width:520px;margin:0 auto}
+.page.active{display:block}
+
+/* ── CARDS ── */
+.card{background:white;border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.card-title{font-size:17px;font-weight:700;color:#1E1B4B;margin-bottom:4px}
+.card-sub{font-size:14px;color:#6B7280;margin-bottom:18px;line-height:1.5}
+
+/* ── FORM ── */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #E5E7EB;border-radius:10px;font-size:15px;color:#1a1a1a;background:#FAFAFA;outline:none;transition:border-color .15s;-webkit-appearance:none}
+input:focus,select:focus{border-color:#6366F1;background:white}
+.err{font-size:12px;color:#DC2626;margin-top:4px;display:none}
+
+/* ── BUTTONS ── */
+.btn{display:block;width:100%;padding:13px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;border:none;text-align:center;transition:all .15s}
+.btn+.btn{margin-top:8px}
+.btn-primary{background:#4F46E5;color:white}
+.btn-primary:hover{background:#4338CA}
+.btn-primary:active{transform:scale(.98)}
+.btn-ghost{background:transparent;color:#9CA3AF;font-size:13px;padding:10px}
+.btn-ghost:hover{color:#374151}
+.btn-sm{display:inline-block;width:auto;padding:6px 14px;font-size:13px;border-radius:8px;font-weight:600;cursor:pointer;border:none}
+.btn-danger{background:#FEE2E2;color:#DC2626}
+.btn-danger:hover{background:#FCA5A5}
+
+/* ── STICKIES ── */
+.sticky{background:#FEF08A;border-radius:12px;padding:16px;margin-bottom:12px;position:relative}
+.sticky-name{font-size:11px;font-weight:800;color:#713F12;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+.stmt{font-size:14px;color:#422006;line-height:1.6;padding:3px 0;border-bottom:1px solid rgba(161,98,7,.15)}
+.stmt:last-of-type{border:none}
+.guess-row{display:flex;gap:6px;margin-top:10px}
+.gbtn{flex:1;padding:8px 4px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid #A16207;background:#FDE68A;color:#713F12;transition:all .1s;text-align:center}
+.gbtn:hover:not(:disabled){background:#FCD34D}
+.gbtn.correct{background:#D1FAE5;border-color:#059669;color:#065F46}
+.gbtn.wrong{background:#FEE2E2;border-color:#DC2626;color:#7F1D1D}
+.gbtn:disabled{cursor:default;opacity:.85}
+.result-msg{margin-top:8px;font-size:13px;font-weight:600;padding:6px 10px;border-radius:8px}
+.result-msg.correct{background:#D1FAE5;color:#065F46}
+.result-msg.wrong{background:#FEE2E2;color:#7F1D1D}
+
+/* ── STATS BAR ── */
+.stats-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.stat-cell{background:white;border-radius:12px;padding:12px 8px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.stat-val{font-size:22px;font-weight:800;color:#1E1B4B}
+.stat-lbl{font-size:10px;color:#9CA3AF;margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+
+/* ── LEADERBOARD ── */
+.lb-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:.5px solid #F3F4F6}
+.lb-rank{font-size:18px;min-width:30px}
+.lb-name{flex:1;font-size:15px;font-weight:600;color:#1E1B4B}
+.lb-pts{background:#EEF2FF;color:#4338CA;font-size:13px;font-weight:800;padding:4px 12px;border-radius:20px}
+
+/* ── TV VIEW ── */
+#tv-view{max-width:100%;padding:0}
+.tv-shell{background:#1E1B4B;min-height:calc(100dvh - 50px);display:flex;flex-direction:column}
+.tv-head{padding:18px 28px 14px;border-bottom:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:20px}
+.tv-title{font-size:22px;font-weight:800;color:#F5F3FF;flex:1}
+.tv-stats{display:flex;gap:24px}
+.tv-sv{font-size:22px;font-weight:800;color:#C4B5FD}
+.tv-sl{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.6px;margin-top:2px;text-align:center}
+.tv-body{display:grid;grid-template-columns:1fr 260px;flex:1;overflow:hidden}
+.tv-wall{padding:18px 20px;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;align-content:start}
+.tv-sticky{background:#FEF08A;border-radius:8px;padding:12px}
+.tv-sname{font-size:10px;font-weight:800;color:#713F12;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.tv-sstmt{font-size:11px;color:#422006;line-height:1.5;padding:2px 0;border-bottom:1px solid rgba(161,98,7,.18)}
+.tv-sstmt:last-child{border:none}
+.tv-side{border-left:1px solid rgba(255,255,255,.08);padding:18px 16px;display:flex;flex-direction:column;overflow:hidden}
+.tv-side-title{font-size:10px;font-weight:700;color:#A5B4FC;text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px}
+.tv-lb-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.tv-lb-rank{font-size:15px;min-width:26px}
+.tv-lb-name{flex:1;font-size:13px;font-weight:600;color:#F5F3FF;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-lb-pts{font-size:13px;font-weight:800;color:#FDE68A}
+.tv-foot{margin-top:auto;padding-top:14px;font-size:10px;color:rgba(255,255,255,.2);line-height:1.7}
+.tv-footer{padding:8px 28px;border-top:1px solid rgba(255,255,255,.07);display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.3)}
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#4ADE80;margin-right:5px;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── ADMIN ── */
+.admin-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:.5px solid #F3F4F6}
+.admin-name{font-size:14px;font-weight:600;color:#1E1B4B;flex:1}
+.lie-tag{font-size:11px;background:#FEE2E2;color:#991B1B;border-radius:6px;padding:2px 8px;font-weight:600}
+
+/* ── MISC ── */
+.pill{display:inline-block;background:#EEF2FF;color:#4338CA;font-size:12px;font-weight:700;padding:3px 10px;border-radius:20px}
+.empty{text-align:center;padding:3rem 1rem;color:#9CA3AF;font-size:14px;line-height:1.6}
+.empty .ico{font-size:36px;margin-bottom:10px}
+.banner{background:#EEF2FF;border:1.5px solid #C7D2FE;border-radius:10px;padding:10px 14px;font-size:13px;color:#4338CA;margin-bottom:14px;font-weight:500}
+.section-lbl{font-size:11px;font-weight:700;color:#9CA3AF;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">🎯 Two Truths & a Lie</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('phone-view')">📱 Phone</button>
+    <button class="nav-tab" onclick="showPage('tv-view')">📺 TV</button>
+    <button class="nav-tab" onclick="showPage('admin-view')">⚙️ Admin</button>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════════
+     PHONE VIEW
+════════════════════════════════════════════ -->
+<div id="phone-view" class="page active">
+
+  <!-- Step: Enter name -->
+  <div id="p-step-name">
+    <div style="text-align:center;padding:2rem 0 1.5rem">
+      <div style="font-size:52px;margin-bottom:12px">✌️</div>
+      <div style="font-size:22px;font-weight:800;color:#1E1B4B;margin-bottom:6px">Join the game!</div>
+      <div style="font-size:14px;color:#6B7280;line-height:1.5">Write two truths and one lie.<br>Guess others' lies to earn raffle tickets!</div>
+    </div>
+    <div class="card">
+      <div class="field">
+        <label>Your name</label>
+        <input id="p-name" type="text" placeholder="First name or nickname" autocomplete="off"/>
+        <div class="err" id="p-name-err">Enter your name to continue.</div>
+      </div>
+      <button class="btn btn-primary" onclick="goName()">Let's go →</button>
+    </div>
+  </div>
+
+  <!-- Step: Submit entry -->
+  <div id="p-step-submit" style="display:none">
+    <div class="card">
+      <div class="card-title">Hey <span id="p-greet"></span>! 👋</div>
+      <div class="card-sub">Write two things that are true about you and one lie. Others will try to guess which is the lie.</div>
+      <div class="field"><label>Statement 1</label><input id="p-s1" type="text" placeholder="A truth or your lie…"/></div>
+      <div class="field"><label>Statement 2</label><input id="p-s2" type="text" placeholder="A truth or your lie…"/></div>
+      <div class="field"><label>Statement 3</label><input id="p-s3" type="text" placeholder="A truth or your lie…"/></div>
+      <div class="field">
+        <label>Which one is actually the lie?</label>
+        <select id="p-lie">
+          <option value="">Choose…</option>
+          <option value="0">Statement 1</option>
+          <option value="1">Statement 2</option>
+          <option value="2">Statement 3</option>
+        </select>
+      </div>
+      <div class="err" id="p-sub-err">Please fill in all fields.</div>
+      <button class="btn btn-primary" onclick="goSubmit()">Post to the wall 📌</button>
+      <button class="btn btn-ghost" onclick="goVote()">Skip — just vote</button>
+    </div>
+  </div>
+
+  <!-- Step: Vote -->
+  <div id="p-step-vote" style="display:none">
+    <div class="stats-bar">
+      <div class="stat-cell"><div class="stat-val" id="p-my-tickets">0</div><div class="stat-lbl">My tickets</div></div>
+      <div class="stat-cell"><div class="stat-val" id="p-total">0</div><div class="stat-lbl">Guesses</div></div>
+      <div class="stat-cell"><div class="stat-val" id="p-pct">—</div><div class="stat-lbl">Correct</div></div>
+    </div>
+    <div class="banner" id="p-posted-banner" style="display:none">✅ You're on the wall! Others are guessing your lie now.</div>
+    <div class="section-lbl">Guess the lie — earn a ticket for each correct answer! 🎟️</div>
+    <div id="p-stickies">
+      <div class="empty"><div class="ico">⏳</div>No entries yet — check back in a moment!</div>
+    </div>
+    <button class="btn btn-ghost" style="margin-top:16px" onclick="refreshVote()">↻ Refresh entries</button>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════════════
+     TV VIEW
+════════════════════════════════════════════ -->
+<div id="tv-view" class="page">
+  <div class="tv-shell">
+    <div class="tv-head">
+      <div class="tv-title">Two Truths & a Lie 🎯</div>
+      <div class="tv-stats">
+        <div><div class="tv-sv" id="tv-count">0</div><div class="tv-sl">On wall</div></div>
+        <div><div class="tv-sv" id="tv-guesses">0</div><div class="tv-sl">Guesses</div></div>
+        <div><div class="tv-sv" id="tv-pct">—</div><div class="tv-sl">Correct</div></div>
+      </div>
+    </div>
+    <div class="tv-body">
+      <div class="tv-wall" id="tv-wall">
+        <div style="grid-column:1/-1;color:rgba(255,255,255,.25);font-size:14px;text-align:center;padding:2rem 0">Entries will appear here as people submit on their phones…</div>
+      </div>
+      <div class="tv-side">
+        <div class="tv-side-title">🏆 Leaderboard</div>
+        <div id="tv-lb"><div style="font-size:12px;color:rgba(255,255,255,.25)">Start guessing to earn tickets!</div></div>
+        <div class="tv-foot">Each correct guess = 1 raffle ticket 🎟️<br>Draw a winner at the end of the event!</div>
+      </div>
+    </div>
+    <div class="tv-footer">
+      <span><span class="dot"></span>Live — auto-refreshes every 10 seconds</span>
+      <span id="tv-url"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     ADMIN VIEW
+════════════════════════════════════════════ -->
+<div id="admin-view" class="page">
+  <div class="card">
+    <div class="card-title">⚙️ Admin panel</div>
+    <div class="card-sub">Only you can see which statement is the lie. Use this to remove any entries if needed.</div>
+    <div style="display:flex;gap:10px;margin-bottom:4px">
+      <div class="stat-cell" style="flex:1"><div class="stat-val" id="adm-count">0</div><div class="stat-lbl">Entries</div></div>
+      <div class="stat-cell" style="flex:1"><div class="stat-val" id="adm-guesses">0</div><div class="stat-lbl">Guesses</div></div>
+      <div class="stat-cell" style="flex:1"><div class="stat-val" id="adm-pct">—</div><div class="stat-lbl">Correct %</div></div>
+    </div>
+  </div>
+  <div id="adm-list">
+    <div class="empty"><div class="ico">📋</div>No entries yet.</div>
+  </div>
+  <div style="margin-top:20px">
+    <button class="btn btn-danger" onclick="clearAll()" style="max-width:200px;margin:0 auto">🗑️ Clear all data</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// STATE  (stored in localStorage so it persists on page refresh)
+// ═══════════════════════════════════════════════════════
+const STORE_KEY = 'ttl_event_v1';
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || freshState(); }
+  catch { return freshState(); }
+}
+function freshState() {
+  return { entries: [], scores: {}, totalGuesses: 0, correctGuesses: 0, nextId: 1 };
+}
+function save(s) { localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+
+let state = load();
+
+// player session (not persisted — resets on tab close, intentionally)
+let playerName = '';
+let playerGuesses = {}; // key -> guessIdx
+let myTickets = 0;
+let myCorrect = 0;
+let myTotal = 0;
+let posted = false;
+
+// ═══════════════════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+  if (id === 'tv-view') renderTV();
+  if (id === 'admin-view') renderAdmin();
+}
+
+// ═══════════════════════════════════════════════════════
+// PHONE FLOW
+// ═══════════════════════════════════════════════════════
+function phoneStep(id) {
+  ['p-step-name','p-step-submit','p-step-vote'].forEach(s => {
+    document.getElementById(s).style.display = s === id ? '' : 'none';
+  });
+}
+
+function goName() {
+  const n = document.getElementById('p-name').value.trim();
+  const err = document.getElementById('p-name-err');
+  if (!n) { err.style.display = 'block'; return; }
+  err.style.display = 'none';
+  playerName = n;
+  document.getElementById('p-greet').textContent = n;
+  phoneStep('p-step-submit');
+}
+
+function goSubmit() {
+  const s1 = document.getElementById('p-s1').value.trim();
+  const s2 = document.getElementById('p-s2').value.trim();
+  const s3 = document.getElementById('p-s3').value.trim();
+  const lie = document.getElementById('p-lie').value;
+  const err = document.getElementById('p-sub-err');
+  if (!s1||!s2||!s3||lie==='') { err.style.display='block'; return; }
+  err.style.display = 'none';
+  state = load();
+  state.entries.push({ id: state.nextId++, name: playerName, stmts: [s1,s2,s3], lie: parseInt(lie), ts: Date.now() });
+  if (!state.scores[playerName]) state.scores[playerName] = 0;
+  save(state);
+  posted = true;
+  document.getElementById('p-posted-banner').style.display = '';
+  goVote();
+}
+
+function goVote() {
+  phoneStep('p-step-vote');
+  refreshVote();
+}
+
+function refreshVote() {
+  state = load();
+  renderVoteStickies();
+  updateVoteStats();
+}
+
+function renderVoteStickies() {
+  const others = state.entries.filter(e => e.name !== playerName);
+  const el = document.getElementById('p-stickies');
+  if (!others.length) {
+    el.innerHTML = `<div class="empty"><div class="ico">⏳</div>No entries yet — check back in a moment!</div>`;
+    return;
+  }
+  el.innerHTML = others.map(e => {
+    const guessed = playerGuesses[e.id] != null;
+    const correct = guessed && playerGuesses[e.id] === e.lie;
+    const btns = e.stmts.map((_, i) => {
+      let cls = 'gbtn';
+      if (guessed && i === playerGuesses[e.id]) cls += correct ? ' correct' : ' wrong';
+      return `<button class="${cls}" onclick="doGuess(${e.id},${i})" ${guessed?'disabled':''}>${i+1}</button>`;
+    }).join('');
+    const msg = guessed ? `<div class="result-msg ${correct?'correct':'wrong'}">${correct?'✓ Correct! +1 raffle ticket 🎟️':'✗ Nope — find '+e.name+' to see the real lie!'}</div>` : '';
+    return `<div class="sticky">
+      <div class="sticky-name">${e.name}</div>
+      ${e.stmts.map(s=>`<div class="stmt">${s}</div>`).join('')}
+      <div style="font-size:11px;color:#92400E;font-weight:700;margin-top:10px">Which is the lie?</div>
+      <div class="guess-row">${btns}</div>${msg}
+    </div>`;
+  }).join('');
+}
+
+function doGuess(entryId, gIdx) {
+  if (playerGuesses[entryId] != null) return;
+  state = load();
+  const entry = state.entries.find(e => e.id === entryId);
+  if (!entry) return;
+  const correct = gIdx === entry.lie;
+  playerGuesses[entryId] = gIdx;
+  myTotal++;
+  if (correct) { myCorrect++; myTickets++; state.scores[playerName] = (state.scores[playerName]||0)+1; }
+  state.totalGuesses++;
+  if (correct) state.correctGuesses++;
+  save(state);
+  renderVoteStickies();
+  updateVoteStats();
+}
+
+function updateVoteStats() {
+  document.getElementById('p-my-tickets').textContent = myTickets;
+  document.getElementById('p-total').textContent = myTotal;
+  document.getElementById('p-pct').textContent = myTotal ? Math.round(myCorrect/myTotal*100)+'%' : '—';
+}
+
+// ═══════════════════════════════════════════════════════
+// TV VIEW
+// ═══════════════════════════════════════════════════════
+const medals = ['🥇','🥈','🥉'];
+function renderTV() {
+  state = load();
+  document.getElementById('tv-url').textContent = window.location.href.split('?')[0];
+  document.getElementById('tv-count').textContent = state.entries.length;
+  document.getElementById('tv-guesses').textContent = state.totalGuesses;
+  document.getElementById('tv-pct').textContent = state.totalGuesses ? Math.round(state.correctGuesses/state.totalGuesses*100)+'%' : '—';
+
+  const wall = document.getElementById('tv-wall');
+  if (!state.entries.length) {
+    wall.innerHTML = `<div style="grid-column:1/-1;color:rgba(255,255,255,.25);font-size:14px;text-align:center;padding:2rem 0">Entries will appear here as people submit on their phones…</div>`;
+  } else {
+    wall.innerHTML = state.entries.map(e => `
+      <div class="tv-sticky">
+        <div class="tv-sname">${e.name}</div>
+        ${e.stmts.map(s=>`<div class="tv-sstmt">${s}</div>`).join('')}
+      </div>`).join('');
+  }
+
+  const lb = Object.entries(state.scores).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const lbEl = document.getElementById('tv-lb');
+  if (!lb.length) {
+    lbEl.innerHTML = `<div style="font-size:12px;color:rgba(255,255,255,.25)">Start guessing to earn tickets!</div>`;
+  } else {
+    lbEl.innerHTML = lb.map(([n,p],i)=>`
+      <div class="tv-lb-row">
+        <div class="tv-lb-rank">${medals[i]||'#'+(i+1)}</div>
+        <div class="tv-lb-name">${n}</div>
+        <div class="tv-lb-pts">🎟️ ${p}</div>
+      </div>`).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// ADMIN VIEW
+// ═══════════════════════════════════════════════════════
+function renderAdmin() {
+  state = load();
+  document.getElementById('adm-count').textContent = state.entries.length;
+  document.getElementById('adm-guesses').textContent = state.totalGuesses;
+  document.getElementById('adm-pct').textContent = state.totalGuesses ? Math.round(state.correctGuesses/state.totalGuesses*100)+'%' : '—';
+  const el = document.getElementById('adm-list');
+  if (!state.entries.length) {
+    el.innerHTML = `<div class="empty"><div class="ico">📋</div>No entries yet.</div>`;
+    return;
+  }
+  el.innerHTML = state.entries.map(e => `
+    <div class="admin-row">
+      <div>
+        <div class="admin-name">${e.name}</div>
+        <div style="font-size:12px;color:#6B7280;margin-top:2px">${e.stmts.map((s,i)=>`${i+1}. ${s}`).join(' &nbsp;|&nbsp; ')}</div>
+      </div>
+      <span class="lie-tag">Lie: #${e.lie+1}</span>
+      <button class="btn-sm btn-danger" onclick="deleteEntry(${e.id})">✕</button>
+    </div>`).join('');
+}
+
+function deleteEntry(id) {
+  if (!confirm('Remove this entry?')) return;
+  state = load();
+  state.entries = state.entries.filter(e => e.id !== id);
+  save(state);
+  renderAdmin();
+}
+
+function clearAll() {
+  if (!confirm('Clear ALL entries and scores? This cannot be undone.')) return;
+  localStorage.removeItem(STORE_KEY);
+  state = freshState();
+  renderAdmin();
+  alert('All data cleared!');
+}
+
+// ═══════════════════════════════════════════════════════
+// AUTO-REFRESH TV every 10 seconds
+// ═══════════════════════════════════════════════════════
+setInterval(() => {
+  if (document.getElementById('tv-view').classList.contains('active')) renderTV();
+}, 10000);
+</script>
+</body>
+</html>
