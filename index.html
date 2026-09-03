@@ -258,8 +258,40 @@ input:focus,select:focus{border-color:#6366F1;background:white}
 
 <script>
 // ═══════════════════════════════════════════════════════
-// STATE  (stored in localStorage so it persists on page refresh)
+// CONFIG — paste your Apps Script Web App URL here after deploying
 // ═══════════════════════════════════════════════════════
+const API_URL = 'https://script.google.com/a/macros/nvidia.com/s/AKfycbwCO2TrHX-7zg7s1PfHlWWEF5pbIh7vU1LVzInY9HLHZ8urYFC_stPzwOQL-moK1dKZ/exec';
+
+// ═══════════════════════════════════════════════════════
+// API HELPERS
+// ═══════════════════════════════════════════════════════
+async function apiGet(action) {
+  const res = await fetch(`${API_URL}?action=${action}`);
+  return res.json();
+}
+
+async function apiPost(body) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+// ═══════════════════════════════════════════════════════
+// STATE (in-memory, synced from Google Sheet)
+// ═══════════════════════════════════════════════════════
+let allEntries = [];
+let allScores = [];
+let globalStats = { total: 0, correct: 0 };
+
+// player session
+let playerName = '';
+let playerGuesses = {};
+let myTickets = 0;
+let myCorrect = 0;
+let myTotal = 0;
+let posted = false;
 const STORE_KEY = 'ttl_event_v1';
 
 function load() {
@@ -289,10 +321,9 @@ function showPage(id) {
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   event.target.classList.add('active');
-  if (id === 'tv-view') renderTV();
+  if (id === 'tv-view') { syncAll().then(renderTV); }
   if (id === 'admin-view') {
-    if (adminUnlocked) renderAdmin();
-    // else gate is already showing
+    if (adminUnlocked) { syncAll().then(renderAdmin); }
   }
 }
 
@@ -315,7 +346,7 @@ function goName() {
   phoneStep('p-step-submit');
 }
 
-function goSubmit() {
+async function goSubmit() {
   const s1 = document.getElementById('p-s1').value.trim();
   const s2 = document.getElementById('p-s2').value.trim();
   const s3 = document.getElementById('p-s3').value.trim();
@@ -323,28 +354,32 @@ function goSubmit() {
   const err = document.getElementById('p-sub-err');
   if (!s1||!s2||!s3||lie==='') { err.style.display='block'; return; }
   err.style.display = 'none';
-  state = load();
-  state.entries.push({ id: state.nextId++, name: playerName, stmts: [s1,s2,s3], lie: parseInt(lie), ts: Date.now() });
-  if (!state.scores[playerName]) state.scores[playerName] = 0;
-  save(state);
+  const btn = document.querySelector('#p-step-submit .btn-primary');
+  btn.textContent = 'Posting…'; btn.disabled = true;
+  await apiPost({ action: 'addEntry', name: playerName, stmts: [s1,s2,s3], lie: parseInt(lie) });
   posted = true;
   document.getElementById('p-posted-banner').style.display = '';
+  btn.textContent = 'Post to the wall 📌'; btn.disabled = false;
   goVote();
 }
 
-function goVote() {
+async function goVote() {
   phoneStep('p-step-vote');
-  refreshVote();
+  await refreshVote();
 }
 
-function refreshVote() {
-  state = load();
+async function refreshVote() {
+  const el = document.getElementById('p-stickies');
+  el.innerHTML = `<div class="empty"><div class="ico">⏳</div>Loading entries…</div>`;
+  const [entries, stats] = await Promise.all([apiGet('getEntries'), apiGet('getStats')]);
+  allEntries = entries;
+  globalStats = stats;
   renderVoteStickies();
   updateVoteStats();
 }
 
 function renderVoteStickies() {
-  const others = state.entries.filter(e => e.name !== playerName);
+  const others = allEntries.filter(e => e.name !== playerName);
   const el = document.getElementById('p-stickies');
   if (!others.length) {
     el.innerHTML = `<div class="empty"><div class="ico">⏳</div>No entries yet — check back in a moment!</div>`;
@@ -356,7 +391,7 @@ function renderVoteStickies() {
     const btns = e.stmts.map((_, i) => {
       let cls = 'gbtn';
       if (guessed && i === playerGuesses[e.id]) cls += correct ? ' correct' : ' wrong';
-      return `<button class="${cls}" onclick="doGuess(${e.id},${i})" ${guessed?'disabled':''}>${i+1}</button>`;
+      return `<button class="${cls}" onclick="doGuess('${e.id}',${i})" ${guessed?'disabled':''}>${i+1}</button>`;
     }).join('');
     const msg = guessed ? `<div class="result-msg ${correct?'correct':'wrong'}">${correct?'✓ Correct! +1 point ⭐':'✗ Nope — find '+e.name+' to see the real lie!'}</div>` : '';
     return `<div class="sticky">
@@ -368,18 +403,15 @@ function renderVoteStickies() {
   }).join('');
 }
 
-function doGuess(entryId, gIdx) {
+async function doGuess(entryId, gIdx) {
   if (playerGuesses[entryId] != null) return;
-  state = load();
-  const entry = state.entries.find(e => e.id === entryId);
+  const entry = allEntries.find(e => e.id === entryId);
   if (!entry) return;
   const correct = gIdx === entry.lie;
   playerGuesses[entryId] = gIdx;
   myTotal++;
-  if (correct) { myCorrect++; myTickets++; state.scores[playerName] = (state.scores[playerName]||0)+1; } // myTickets = my points
-  state.totalGuesses++;
-  if (correct) state.correctGuesses++;
-  save(state);
+  if (correct) { myCorrect++; myTickets++; }
+  await apiPost({ action: 'addGuess', guesser: playerName, entryId, guessIdx: gIdx, correct });
   renderVoteStickies();
   updateVoteStats();
 }
@@ -394,34 +426,42 @@ function updateVoteStats() {
 // TV VIEW
 // ═══════════════════════════════════════════════════════
 const medals = ['🥇','🥈','🥉'];
+
+async function syncAll() {
+  const [entries, scores, stats] = await Promise.all([
+    apiGet('getEntries'), apiGet('getScores'), apiGet('getStats')
+  ]);
+  allEntries = entries;
+  allScores = scores;
+  globalStats = stats;
+}
+
 function renderTV() {
-  state = load();
   document.getElementById('tv-url').textContent = window.location.href.split('?')[0];
-  document.getElementById('tv-count').textContent = state.entries.length;
-  document.getElementById('tv-guesses').textContent = state.totalGuesses;
-  document.getElementById('tv-pct').textContent = state.totalGuesses ? Math.round(state.correctGuesses/state.totalGuesses*100)+'%' : '—';
+  document.getElementById('tv-count').textContent = allEntries.length;
+  document.getElementById('tv-guesses').textContent = globalStats.total || 0;
+  document.getElementById('tv-pct').textContent = globalStats.total ? Math.round((globalStats.correct||0)/globalStats.total*100)+'%' : '—';
 
   const wall = document.getElementById('tv-wall');
-  if (!state.entries.length) {
+  if (!allEntries.length) {
     wall.innerHTML = `<div style="grid-column:1/-1;color:rgba(255,255,255,.25);font-size:14px;text-align:center;padding:2rem 0">Entries will appear here as people submit on their phones…</div>`;
   } else {
-    wall.innerHTML = state.entries.map(e => `
+    wall.innerHTML = allEntries.map(e => `
       <div class="tv-sticky">
         <div class="tv-sname">${e.name}</div>
         ${e.stmts.map(s=>`<div class="tv-sstmt">${s}</div>`).join('')}
       </div>`).join('');
   }
 
-  const lb = Object.entries(state.scores).sort((a,b)=>b[1]-a[1]).slice(0,10);
   const lbEl = document.getElementById('tv-lb');
-  if (!lb.length) {
+  if (!allScores.length) {
     lbEl.innerHTML = `<div style="font-size:12px;color:rgba(255,255,255,.25)">Start guessing to earn points!</div>`;
   } else {
-    lbEl.innerHTML = lb.map(([n,p],i)=>`
+    lbEl.innerHTML = allScores.slice(0,10).map((s,i)=>`
       <div class="tv-lb-row">
         <div class="tv-lb-rank">${medals[i]||'#'+(i+1)}</div>
-        <div class="tv-lb-name">${n}</div>
-        <div class="tv-lb-pts">⭐ ${p}</div>
+        <div class="tv-lb-name">${s.name}</div>
+        <div class="tv-lb-pts">⭐ ${s.points}</div>
       </div>`).join('');
   }
 }
@@ -440,7 +480,7 @@ function checkAdminPw() {
     document.getElementById('adm-gate').style.display = 'none';
     document.getElementById('adm-panel').style.display = '';
     err.style.display = 'none';
-    renderAdmin();
+    syncAll().then(renderAdmin);
   } else {
     err.style.display = 'block';
     document.getElementById('adm-pw').value = '';
@@ -456,47 +496,55 @@ function lockAdmin() {
 }
 
 function renderAdmin() {
-  state = load();
-  document.getElementById('adm-count').textContent = state.entries.length;
-  document.getElementById('adm-guesses').textContent = state.totalGuesses;
-  document.getElementById('adm-pct').textContent = state.totalGuesses ? Math.round(state.correctGuesses/state.totalGuesses*100)+'%' : '—';
+  document.getElementById('adm-count').textContent = allEntries.length;
+  document.getElementById('adm-guesses').textContent = globalStats.total || 0;
+  document.getElementById('adm-pct').textContent = globalStats.total ? Math.round((globalStats.correct||0)/globalStats.total*100)+'%' : '—';
   const el = document.getElementById('adm-list');
-  if (!state.entries.length) {
+  if (!allEntries.length) {
     el.innerHTML = `<div class="empty"><div class="ico">📋</div>No entries yet.</div>`;
     return;
   }
-  el.innerHTML = state.entries.map(e => `
+  el.innerHTML = allEntries.map(e => `
     <div class="admin-row">
       <div>
         <div class="admin-name">${e.name}</div>
         <div style="font-size:12px;color:#6B7280;margin-top:2px">${e.stmts.map((s,i)=>`${i+1}. ${s}`).join(' &nbsp;|&nbsp; ')}</div>
       </div>
       <span class="lie-tag">Lie: #${e.lie+1}</span>
-      <button class="btn-sm btn-danger" onclick="deleteEntry(${e.id})">✕</button>
+      <button class="btn-sm btn-danger" onclick="deleteEntry('${e.id}')">✕</button>
     </div>`).join('');
 }
 
-function deleteEntry(id) {
+async function deleteEntry(id) {
   if (!confirm('Remove this entry?')) return;
-  state = load();
-  state.entries = state.entries.filter(e => e.id !== id);
-  save(state);
+  await apiPost({ action: 'deleteEntry', id });
+  await syncAll();
   renderAdmin();
 }
 
-function clearAll() {
+async function clearAll() {
   if (!confirm('Clear ALL entries and scores? This cannot be undone.')) return;
-  localStorage.removeItem(STORE_KEY);
-  state = freshState();
+  await apiPost({ action: 'clearAll' });
+  allEntries = []; allScores = []; globalStats = { total: 0, correct: 0 };
   renderAdmin();
   alert('All data cleared!');
 }
 
 // ═══════════════════════════════════════════════════════
-// AUTO-REFRESH TV every 10 seconds
+// AUTO-REFRESH every 10 seconds (TV and vote screen)
 // ═══════════════════════════════════════════════════════
-setInterval(() => {
-  if (document.getElementById('tv-view').classList.contains('active')) renderTV();
+setInterval(async () => {
+  if (document.getElementById('tv-view').classList.contains('active')) {
+    await syncAll();
+    renderTV();
+  }
+  if (document.getElementById('p-step-vote').style.display !== 'none' &&
+      document.getElementById('phone-view').classList.contains('active')) {
+    const [entries, stats] = await Promise.all([apiGet('getEntries'), apiGet('getStats')]);
+    allEntries = entries;
+    globalStats = stats;
+    renderVoteStickies();
+  }
 }, 10000);
 </script>
 </body>
